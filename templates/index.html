@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лексический анализатор - Вариант 8</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+        
+        .variant-info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: left;
+        }
+        
+        .variant-info h3 {
+            margin-bottom: 8px;
+            font-size: 1.2em;
+        }
+        
+        .variant-info ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .variant-info li {
+            padding: 4px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .variant-info li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .panel h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .panel-icon {
+            font-size: 1.3em;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .clear-btn {
+            background: #6c757d;
+        }
+        
+        .clear-btn:hover {
+            background: #5a6268;
+        }
+        
+        .example-btn {
+            background: #28a745;
+        }
+        
+        .example-btn:hover {
+            background: #218838;
+        }
+        
+        #result {
+            min-height: 100px;
+        }
+        
+        .result-empty {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-size: 1.1em;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .tokens-table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .tokens-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .tokens-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .tokens-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tokens-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .tokens-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .token-value {
+            font-family: 'Courier New', monospace;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .error-list {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .error-list h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .error-item {
+            color: #856404;
+            padding: 8px 0;
+            border-bottom: 1px solid #ffe69c;
+        }
+        
+        .error-item:last-child {
+            border-bottom: none;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .htmx-indicator {
+            display: inline-block;
+            opacity: 0;
+            transition: opacity 200ms ease-in;
+        }
+        
+        .htmx-request .htmx-indicator {
+            opacity: 1;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .location {
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .instructions h4 {
+            color: #1976D2;
+            margin-bottom: 8px;
+        }
+
+        .instructions p {
+            color: #424242;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Лексический анализатор</h1>
+            <p>Распознавание логических выражений</p>
+            
+            <div class="variant-info">
+                <h3>Вариант 8</h3>
+                <ul>
+                    <li>Идентификаторы (a, b, x, result, ...)</li>
+                    <li>Константы: <strong>0</strong> и <strong>1</strong></li>
+                    <li>Присваивание: <strong>:=</strong></li>
+                    <li>Операции: <strong>or</strong>, <strong>xor</strong>, <strong>and</strong>, <strong>not</strong></li>
+                    <li>Скобки: <strong>(</strong> <strong>)</strong></li>
+                    <li>Разделитель: <strong>;</strong></li>
+                    <li>Комментарии: <strong>//</strong> и <strong>/* ... */</strong></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="panel">
+                <h2>Входной код</h2>
+                <form hx-post="/analyze" hx-target="#result" hx-swap="innerHTML">
+                    <textarea 
+                        name="code" 
+                        id="code-input"
+                        placeholder="Введите логические выражения...
+
+Пример:
+a := 1;
+b := 0;
+result := a and b;
+output := (a or b) xor not a;"
+                    ></textarea>
+                    
+                    <div class="button-group">
+                        <button type="submit">
+                            Анализировать
+                            <span class="htmx-indicator"><span class="loading"></span></span>
+                        </button>
+                        <button type="button" class="clear-btn" onclick="document.getElementById('code-input').value = ''">
+                            Очистить
+                        </button>
+                        <button type="button" class="example-btn" onclick="loadExample()">
+                            Пример
+                        </button>
+                    </div>
+                </form>
+
+                <div class="instructions">
+                    <h4>Инструкция:</h4>
+                    <p>
+                        Введите логические выражения и нажмите "Анализировать". 
+                        Каждое выражение должно заканчиваться точкой с запятой (;).
+                        Поддерживаются комментарии вида // и /* */.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>Результаты анализа</h2>
+                <div id="result">
+                    <div class="result-empty">
+                        Результаты анализа появятся здесь после обработки кода
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function loadExample() {
+            const example = `// Пример логических выражений
+a := 1;
+b := 0;
+c := 1;
+
+/* Вычисление логических операций */
+result1 := a and b;
+result2 := a or b;
+result3 := a xor c;
+result4 := not a;
+
+// Сложное выражение
+final := (a or b) and (not c xor b);`;
+            
+            document.getElementById('code-input').value = example;
+        }
+    </script>
+</body>
+</html>
+
+{{define "result"}}
+    {{if .HasErrors}}
+        <div class="error-list">
+            <h3>Обнаружены ошибки</h3>
+            {{range .Errors}}
+                <div class="error-item">{{.}}</div>
+            {{end}}
+        </div>
+    {{else}}
+        <div class="success-message">
+            <span>Анализ завершен успешно!</span>
+        </div>
+    {{end}}
+
+    {{if gt .TokenCount 0}}
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">{{.TokenCount}}</div>
+                <div class="stat-label">Всего лексем</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{.SuccessCount}}</div>
+                <div class="stat-label">Распознано</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{.ErrorCount}}</div>
+                <div class="stat-label">Ошибок</div>
+            </div>
+        </div>
+
+        <div class="tokens-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Лексема</th>
+                        <th>Тип</th>
+                        <th>Позиция</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $index, $token := .Tokens}}
+                    <tr>
+                        <td>{{add $index 1}}</td>
+                        <td><span class="token-value">{{$token.Value}}</span></td>
+                        <td>{{$token.TypeStr}}</td>
+                        <td class="location">строка {{$token.Line}}, столбец {{$token.Column}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    {{end}}
+{{end}}
